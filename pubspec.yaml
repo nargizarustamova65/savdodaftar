@@ -1,0 +1,44 @@
+name: bozorpro
+description: "BozorPro (Savdodaftar) — bozorchilar uchun raqamli daftar."
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Navigatsiya
+  go_router: ^14.2.7
+
+  # Backend API (savdodaftar-backend, /api/v1)
+  dio: ^5.7.0
+
+  # Token va PIN uchun xavfsiz saqlash
+  flutter_secure_storage: ^9.2.2
+
+  # Holat boshqaruvi (API ulanganda repository/provider qatlami uchun)
+  flutter_riverpod: ^2.5.1
+
+  # Sana formatlash (uz / ru)
+  intl: ^0.20.2
+
+  # Inter shrifti (TZ 0-bo'lim: tipografika)
+  google_fonts: ^6.2.1
+
+  # Payme/Click checkout sahifasini tashqi brauzerda ochish (TZ 36)
+  url_launcher: ^6.3.1
+
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
