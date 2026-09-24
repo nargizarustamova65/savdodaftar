@@ -20,6 +20,8 @@ class ProductsListState {
     this.error,
     this.search = '',
     this.filterIndex = 0,
+    this.categories = const <String>[],
+    this.categoryIndex = 0,
   });
 
   final bool isLoading;
@@ -31,7 +33,20 @@ class ProductsListState {
   /// 0 — barchasi, 1 — kam qoldiq, 2 — tugagan.
   final int filterIndex;
 
-  bool get hasQuery => search.trim().isNotEmpty || filterIndex != 0;
+  /// Backend'dagi mavjud kategoriyalar (GET /products/categories).
+  final List<String> categories;
+
+  /// 0 — barcha kategoriyalar, aks holda `categories[categoryIndex - 1]`.
+  final int categoryIndex;
+
+  bool get hasQuery =>
+      search.trim().isNotEmpty || filterIndex != 0 || categoryIndex != 0;
+
+  /// Tanlangan kategoriya nomi yoki null (barchasi).
+  String? get selectedCategory =>
+      categoryIndex >= 1 && categoryIndex <= categories.length
+          ? categories[categoryIndex - 1]
+          : null;
 
   ProductsListState copyWith({
     bool? isLoading,
@@ -41,6 +56,8 @@ class ProductsListState {
     bool clearError = false,
     String? search,
     int? filterIndex,
+    List<String>? categories,
+    int? categoryIndex,
   }) {
     return ProductsListState(
       isLoading: isLoading ?? this.isLoading,
@@ -49,6 +66,8 @@ class ProductsListState {
       error: clearError ? null : (error ?? this.error),
       search: search ?? this.search,
       filterIndex: filterIndex ?? this.filterIndex,
+      categories: categories ?? this.categories,
+      categoryIndex: categoryIndex ?? this.categoryIndex,
     );
   }
 }
@@ -74,17 +93,25 @@ class ProductsController extends StateNotifier<ProductsListState> {
     try {
       final List<Product> items = await _repository.list(
         search: state.search,
+        category: state.selectedCategory,
         filter: filters[state.filterIndex],
         sort: state.filterIndex == 0 ? 'name' : 'stock',
       );
       final ProductsSummary summary = await _repository.summary();
+      final List<String> categories = await _repository.categories();
       if (requestId != _requestId || !mounted) {
         return;
       }
+      // Tanlangan kategoriya ro'yxatdan chiqib ketgan bo'lsa filtr tozalanadi.
+      final String? selected = state.selectedCategory;
+      final int categoryIndex =
+          selected == null ? 0 : categories.indexOf(selected) + 1;
       state = state.copyWith(
         isLoading: false,
         items: items,
         summary: summary,
+        categories: categories,
+        categoryIndex: categoryIndex,
       );
     } on ApiException catch (error) {
       if (requestId != _requestId || !mounted) {
@@ -105,6 +132,14 @@ class ProductsController extends StateNotifier<ProductsListState> {
       return;
     }
     state = state.copyWith(filterIndex: index);
+    load();
+  }
+
+  void setCategory(int index) {
+    if (index == state.categoryIndex) {
+      return;
+    }
+    state = state.copyWith(categoryIndex: index);
     load();
   }
 

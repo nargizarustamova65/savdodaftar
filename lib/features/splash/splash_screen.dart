@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -9,8 +12,6 @@ import '../../core/theme/app_dimens.dart';
 import '../auth/state/auth_providers.dart';
 import '../auth/state/auth_state.dart';
 
-/// TZ 1-ekran: to'liq Dark Green fon, markazda logo va slogan.
-/// Fonda sessiya tekshiriladi va holatga qarab yo'naltiriladi (TZ 27, 37).
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
@@ -22,100 +23,165 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Status bar va navigation bar ranglari
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: AppColors.darkGreen,
+        statusBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.black,
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+    );
+
     _bootstrap();
   }
 
-  /// Token bo'lsa `/auth/me` orqali holat aniqlanadi:
-  /// - PIN mavjud -> PIN unlock
-  /// - profil to'liq emas -> profil ekrani
-  /// - PIN yaratilmagan -> PIN yaratish
-  /// - token yo'q -> Onboarding -> Telefon
   Future<void> _bootstrap() async {
-    final Future<void> minSplash =
-        Future<void>.delayed(const Duration(milliseconds: 1800));
-    await ref.read(authControllerProvider.notifier).restore();
-    await minSplash;
+    // Splash kamida 1.5 sekund ko'rinadi
+    final Future<void> minSplash = Future<void>.delayed(
+      const Duration(milliseconds: 1500),
+    );
 
-    if (!mounted) {
-      return;
+    // restore 5 sekunddan ko'p kutib qolmasin
+    try {
+      await Future.any<void>([
+        ref.read(authControllerProvider.notifier).restore(),
+        Future<void>.delayed(const Duration(seconds: 5)),
+      ]);
+    } catch (e) {
+      debugPrint('Auth restore error: $e');
     }
 
-    final AuthStatus status = ref.read(authControllerProvider).status;
+    // Minimal splash vaqtini kutamiz
+    await minSplash;
+
+    if (!mounted) return;
+
+    final AuthStatus status =
+        ref.read(authControllerProvider).status;
+
     switch (status) {
       case AuthStatus.locked:
         context.go(AppRoutes.pinUnlock);
+        break;
+
       case AuthStatus.needsProfile:
         context.go(AppRoutes.profileSetup);
+        break;
+
       case AuthStatus.needsPin:
         context.go(AppRoutes.pinCreate);
+        break;
+
       case AuthStatus.authenticated:
         context.go(AppRoutes.home);
+        break;
+
       case AuthStatus.unknown:
       case AuthStatus.unauthenticated:
-        // Onboarding faqat birinchi ochilishda ko'rsatiladi (TZ 3).
         final bool seen =
-            await ref.read(tokenStorageProvider).isOnboardingSeen();
-        if (!mounted) {
-          return;
-        }
-        context.go(seen ? AppRoutes.phone : AppRoutes.onboarding);
+        await ref.read(tokenStorageProvider).isOnboardingSeen();
+
+        if (!mounted) return;
+
+        context.go(
+          seen
+              ? AppRoutes.phone
+              : AppRoutes.onboarding,
+        );
+        break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final AppStrings s = context.s;
-    final TextTheme textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
       backgroundColor: AppColors.darkGreen,
-      body: SafeArea(
-        child: Column(
-          children: <Widget>[
-            const Spacer(),
-            Container(
-              height: 96,
-              width: 96,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.12),
-                borderRadius: AppRadius.large,
-              ),
-              child: const Icon(
-                Icons.storefront_rounded,
-                size: 48,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            Text(
-              s.appName,
-              style: textTheme.headlineSmall?.copyWith(
-                color: Colors.white,
-                fontSize: 28,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
-              child: Text(
-                s.slogan,
-                textAlign: TextAlign.center,
-                style: textTheme.bodyMedium?.copyWith(
-                  color: Colors.white.withOpacity(0.85),
+      body: SizedBox.expand(
+        child: Stack(
+          children: [
+            // MARKAZDAGI LOGO VA NOM
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 80),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Logo
+                    Container(
+                      width: 112,
+                      height: 112,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.10),
+                        borderRadius: BorderRadius.circular(28),
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.storefront_rounded,
+                          size: 58,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    // App nomi
+                    Text(
+                      s.appName,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 30,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // Slogan
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 30,
+                      ),
+                      child: Text(
+                        s.slogan,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.80),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            const Spacer(),
-            const SizedBox(
-              height: 24,
-              width: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.4,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+
+            // PASTKI LOADER
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 55,
+              child: Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.3,
+                    valueColor:
+                    const AlwaysStoppedAnimation<Color>(
+                      Colors.white,
+                    ),
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: AppSpacing.xxxl),
           ],
         ),
       ),

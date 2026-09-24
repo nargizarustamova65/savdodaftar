@@ -55,6 +55,20 @@ String formatQty(num qty) {
   return text;
 }
 
+/// Foydalanuvchi kiritgan miqdorni o'qiydi: `2,5` yoki `2.5` -> 2.5.
+/// Bo'sh yoki noto'g'ri matn uchun null qaytaradi.
+double? parseQty(String text) {
+  final String normalized = text
+      .trim()
+      .replaceAll('\u00A0', '')
+      .replaceAll(' ', '')
+      .replaceAll(',', '.');
+  if (normalized.isEmpty) {
+    return null;
+  }
+  return double.tryParse(normalized);
+}
+
 class Product {
   const Product({
     required this.id,

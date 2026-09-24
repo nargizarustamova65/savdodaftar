@@ -36,6 +36,15 @@ class ProductsRepository {
     return ProductsSummary.fromJson(response.dataMap);
   }
 
+  /// GET /products/categories — kategoriya filtri uchun (TZ 11).
+  Future<List<String>> categories() async {
+    final ApiResponse response = await _client.get('/products/categories');
+    return response.dataList
+        .map((Map<String, dynamic> it) => it['name']?.toString() ?? '')
+        .where((String it) => it.isNotEmpty)
+        .toList();
+  }
+
   /// GET /products/barcode/{barcode} — skaner uchun (V2).
   Future<Product> byBarcode(String barcode) async {
     final ApiResponse response =
@@ -128,6 +137,32 @@ class ProductsRepository {
     String? note,
   }) {
     return _movement('/products/$id/stock-out', qty: qty, note: note);
+  }
+
+  /// POST /products/{id}/adjust — inventarizatsiya (TZ 21):
+  /// real qoldiq kiritiladi, kamomad/ortiqcha backend'da avtomatik yoziladi.
+  Future<({Product product, String message})> adjust(
+    int id, {
+    required double actualStock,
+    String? note,
+  }) async {
+    final ApiResponse response = await _client.post(
+      '/products/$id/adjust',
+      body: <String, dynamic>{
+        'actual_stock': actualStock,
+        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      },
+    );
+
+    final Object? rawProduct = response.dataMap['product'];
+    return (
+      product: Product.fromJson(
+        rawProduct is Map
+            ? rawProduct.cast<String, dynamic>()
+            : <String, dynamic>{},
+      ),
+      message: response.message,
+    );
   }
 
   Future<({Product product, String message})> _movement(
