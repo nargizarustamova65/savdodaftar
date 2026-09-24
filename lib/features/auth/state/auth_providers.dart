@@ -1,34 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../core/network/api_client.dart';
-import '../../../core/network/token_storage.dart';
-import '../data/auth_repository.dart';
-import 'auth_controller.dart';
-import 'auth_state.dart';
-
-final Provider<TokenStorage> tokenStorageProvider = Provider<TokenStorage>(
-  (Ref ref) => const TokenStorage(),
-);
-
-final Provider<ApiClient> apiClientProvider = Provider<ApiClient>(
-  (Ref ref) => ApiClient(),
-);
-
-final Provider<AuthRepository> authRepositoryProvider = Provider<AuthRepository>(
-  (Ref ref) => AuthRepository(
-    client: ref.watch(apiClientProvider),
-    tokenStorage: ref.watch(tokenStorageProvider),
-  ),
-);
-
-final StateNotifierProvider<AuthController, AuthState> authControllerProvider =
-    StateNotifierProvider<AuthController, AuthState>((Ref ref) {
-  final AuthController controller =
-      AuthController(ref.watch(authRepositoryProvider));
-
-  // Istalgan so'rovda 401 kelsa sessiya tozalanadi — AppShell holat
-  // o'zgarishini kuzatib, foydalanuvchini login oqimiga qaytaradi.
-  ref.watch(apiClientProvider).onUnauthenticated = controller.sessionExpired;
-
-  return controller;
-});
+import '../core/network/api_client.dart';
+import '../core/network/token_storage.dart';
+import '../features/auth/data/auth_repository.dart';
+import '../features/auth/state/auth_controller.dart';
+import '../features/auth/state/auth_state.dart';
+import '../app/theme_provider.dart';
+final apiClientProvider=Provider<ApiClient>((ref)=>ApiClient());
+final tokenStorageProvider=Provider<TokenStorage>((ref)=>const TokenStorage());
+final authRepositoryProvider=Provider<AuthRepository>((ref)=>AuthRepository(client:ref.watch(apiClientProvider),tokenStorage:ref.watch(tokenStorageProvider)));
+final authControllerProvider=StateNotifierProvider<AuthController,AuthState>((ref){final c=AuthController(ref.watch(authRepositoryProvider));ref.watch(apiClientProvider).onUnauthenticated=c.sessionExpired;return c;});
